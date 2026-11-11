@@ -39,6 +39,7 @@ const opciones = [
 
 
 const Header = () => {
+    const {cantidad} = useCarrito();
 ;  return (
         <header className="w-full bg-blue-950 flex items-center justify-between gap-4 px-6 py-3">
         <img src={logo} alt="HADAJR" className="h-18 w-20" />
