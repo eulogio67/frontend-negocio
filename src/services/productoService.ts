@@ -28,4 +28,11 @@ export const productoService = {
       throw err;
     }
   },
+
+  buscar: async (texto: string): Promise<Producto[]> => {
+  const { data } = await api.get<Producto[]>('/api/productos/buscar', {
+    params: { q: texto },
+  });
+  return data;
+},
 };

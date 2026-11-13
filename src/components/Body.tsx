@@ -42,7 +42,7 @@ const Body = () => {
       <section className="px-6 py-8">
         <h2 className="mb-4 text-2xl font-bold text-gray-900">Categorías</h2>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {["Polos", "Casacas", "Pantalones", "Accesorios"].map((cat) => (
+          {["Polos", "Casacas", "Pantalones", "Sandalias"].map((cat) => (
             <a
               key={cat}
               href="#"
