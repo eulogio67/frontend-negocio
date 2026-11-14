@@ -1,29 +1,56 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { carritoService, type ItemCarrito } from "../services/carritoService";
 
 type CarritoContextType = {
+  items: ItemCarrito[];
   cantidad: number;
-  agregar: () => void;
+  agregar: (productoId: number) => Promise<void>;
+  quitar: (itemId: number) => Promise<void>;
+  recargar: () => Promise<void>;
 };
 
 const CarritoContext = createContext<CarritoContextType | undefined>(undefined);
 
 export const CarritoProvider = ({ children }: { children: ReactNode }) => {
-  const [cantidad, setCantidad] = useState(0);
+  const [items, setItems] = useState<ItemCarrito[]>([]);
 
-  const agregar = () => setCantidad((c) => c + 1);
+  const recargar = useCallback(async () => {
+    if (!localStorage.getItem("token")) {
+      setItems([]);
+      return;
+    }
+    try {
+      setItems(await carritoService.listar());
+    } catch {
+      setItems([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    recargar();
+  }, [recargar]);
+
+  const agregar = async (productoId: number) => {
+    await carritoService.agregar(productoId);
+    await recargar();
+  };
+
+  const quitar = async (itemId: number) => {
+    await carritoService.quitar(itemId);
+    await recargar();
+  };
+
+  const cantidad = items.reduce((total, i) => total + i.cantidad, 0);
 
   return (
-    <CarritoContext.Provider value={{ cantidad, agregar }}>
+    <CarritoContext.Provider value={{ items, cantidad, agregar, quitar, recargar }}>
       {children}
     </CarritoContext.Provider>
   );
 };
 
-// Hook para usarlo en cualquier componente
 export const useCarrito = () => {
   const contexto = useContext(CarritoContext);
-  if (!contexto) {
-    throw new Error("useCarrito debe usarse dentro de CarritoProvider");
-  }
+  if (!contexto) throw new Error("useCarrito debe usarse dentro de CarritoProvider");
   return contexto;
 };

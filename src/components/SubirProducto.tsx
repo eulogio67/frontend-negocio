@@ -15,6 +15,12 @@ interface FormularioProducto {
   stock: string;
 }
 
+interface FotoSeleccionada {
+  id: string;
+  file: File;
+  url: string; // URL temporal para la vista previa
+}
+
 const FORM_INICIAL: FormularioProducto = {
   nombre: '',
   precio: '',
@@ -22,17 +28,22 @@ const FORM_INICIAL: FormularioProducto = {
   stock: '',
 };
 
-const TAMANO_MAXIMO = 5 * 1024 * 1024; // 5 MB, igual que el backend
-const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp'];
+// Debe coincidir con spring.servlet.multipart.max-file-size del backend
+const TAMANO_MAXIMO = 10 * 1024 * 1024; // 10 MB
+const MAX_FOTOS = 10;
+// Las fotos de iPhone pueden llegar como HEIC
+const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
 
 const inputClass =
   'w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 ' +
   'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100';
 
+const botonSecundario =
+  'flex flex-1 items-center justify-center gap-2 rounded-md border border-blue-950 px-3 py-2 text-sm font-medium text-blue-950 hover:bg-blue-50 disabled:opacity-60';
+
 export default function SubirProducto({ onCreado }: SubirProductoProps) {
   const [form, setForm] = useState<FormularioProducto>(FORM_INICIAL);
-  const [imagen, setImagen] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [fotos, setFotos] = useState<FotoSeleccionada[]>([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [creado, setCreado] = useState<Producto | null>(null);
@@ -43,22 +54,23 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
   const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
   const [menuAbierto, setMenuAbierto] = useState(false);
 
-  const inputImagenRef = useRef<HTMLInputElement>(null);
+  const camaraRef = useRef<HTMLInputElement>(null);
+  const galeriaRef = useRef<HTMLInputElement>(null);
 
-  // Pide las categorías una sola vez al montar el componente
+  // Guarda las fotos en una ref para liberar sus URLs al desmontar
+  const fotosRef = useRef<FotoSeleccionada[]>([]);
+  fotosRef.current = fotos;
+
   useEffect(() => {
     listarCategorias()
       .then(setCategoriasDisponibles)
       .catch((e: Error) => setErrorCategorias(e.message))
       .finally(() => setCargandoCategorias(false));
-  }, []);
 
-  // Libera la URL de la vista previa cuando cambia o al desmontar el componente
-  useEffect(() => {
     return () => {
-      if (preview) URL.revokeObjectURL(preview);
+      fotosRef.current.forEach((f) => URL.revokeObjectURL(f.url));
     };
-  }, [preview]);
+  }, []);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -71,30 +83,71 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     );
   };
 
-  const handleImagen = (e: ChangeEvent<HTMLInputElement>) => {
-    const archivo = e.target.files?.[0] ?? null;
+  const validarArchivo = (file: File): string | null => {
+    if (!TIPOS_PERMITIDOS.includes(file.type)) {
+      return `"${file.name}" no es un formato permitido (JPG, PNG, WEBP o HEIC).`;
+    }
+    if (file.size > TAMANO_MAXIMO) {
+      return `"${file.name}" supera los 10 MB.`;
+    }
+    return null;
+  };
+
+  // Recibe archivos de la cámara o de la galería
+  const agregarArchivos = (lista: FileList | null) => {
     setError(null);
+    if (!lista || lista.length === 0) return;
 
-    if (!archivo) {
-      setImagen(null);
-      setPreview(null);
-      return;
+    const nuevas: FotoSeleccionada[] = [];
+    for (const file of Array.from(lista)) {
+      const problema = validarArchivo(file);
+      if (problema) {
+        setError(problema);
+        return;
+      }
+      nuevas.push({
+        id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
+        file,
+        url: URL.createObjectURL(file),
+      });
     }
 
-    if (!TIPOS_PERMITIDOS.includes(archivo.type)) {
-      setError('Solo se permiten imágenes JPG, PNG o WEBP.');
-      e.target.value = '';
-      return;
-    }
+    setFotos((prev) => {
+      const total = prev.length + nuevas.length;
+      if (total > MAX_FOTOS) {
+        setError(`Puedes subir como máximo ${MAX_FOTOS} fotos por producto.`);
+        nuevas.forEach((f) => URL.revokeObjectURL(f.url));
+        return prev;
+      }
+      return [...prev, ...nuevas];
+    });
+  };
 
-    if (archivo.size > TAMANO_MAXIMO) {
-      setError('La imagen no puede superar los 5 MB.');
-      e.target.value = '';
-      return;
-    }
+  const handleCamara = (e: ChangeEvent<HTMLInputElement>) => {
+    agregarArchivos(e.target.files);
+    e.target.value = ''; // permite volver a tomar o elegir el mismo archivo
+  };
 
-    setImagen(archivo);
-    setPreview(URL.createObjectURL(archivo));
+  const handleGaleria = (e: ChangeEvent<HTMLInputElement>) => {
+    agregarArchivos(e.target.files);
+    e.target.value = '';
+  };
+
+  const quitarFoto = (id: string) => {
+    setFotos((prev) => {
+      const foto = prev.find((f) => f.id === id);
+      if (foto) URL.revokeObjectURL(foto.url);
+      return prev.filter((f) => f.id !== id);
+    });
+  };
+
+  // La primera foto es la principal: esta la mueve al inicio
+  const hacerPrincipal = (id: string) => {
+    setFotos((prev) => {
+      const foto = prev.find((f) => f.id === id);
+      if (!foto) return prev;
+      return [foto, ...prev.filter((f) => f.id !== id)];
+    });
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -102,8 +155,8 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     setError(null);
     setCreado(null);
 
-    if (!imagen) {
-      setError('Debes seleccionar una imagen.');
+    if (fotos.length === 0) {
+      setError('Debes agregar al menos una foto.');
       return;
     }
 
@@ -117,7 +170,8 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     formData.append('precio', form.precio);
     formData.append('descripcion', form.descripcion.trim());
     formData.append('stock', form.stock);
-    formData.append('imagen', imagen);
+    // Un campo por cada archivo, en el orden elegido: el primero es la principal
+    fotos.forEach((f) => formData.append('imagenes', f.file));
     // Un campo por cada ID: Spring lo convierte en la lista categoriaIds
     seleccionadas.forEach((id) => formData.append('categoriaIds', String(id)));
 
@@ -128,9 +182,8 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
       setForm(FORM_INICIAL);
       setSeleccionadas([]);
       setMenuAbierto(false);
-      setImagen(null);
-      setPreview(null);
-      if (inputImagenRef.current) inputImagenRef.current.value = '';
+      fotos.forEach((f) => URL.revokeObjectURL(f.url));
+      setFotos([]);
       onCreado?.();
     } catch (err) {
       setError(obtenerMensajeError(err));
@@ -210,9 +263,7 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
             <span className="ml-2 text-gray-500">{menuAbierto ? '▲' : '▼'}</span>
           </button>
 
-          {errorCategorias && (
-            <p className="mt-1 text-xs text-red-600">{errorCategorias}</p>
-          )}
+          {errorCategorias && <p className="mt-1 text-xs text-red-600">{errorCategorias}</p>}
 
           {menuAbierto && categoriasDisponibles.length > 0 && (
             <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto rounded-md border border-gray-200 bg-white p-2">
@@ -235,12 +286,6 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
           {menuAbierto && !cargandoCategorias && categoriasDisponibles.length === 0 && !errorCategorias && (
             <p className="mt-2 text-sm text-gray-500">No hay categorías creadas todavía.</p>
           )}
-
-          {seleccionadas.length > 0 && (
-            <p className="mt-1 text-xs text-gray-500">
-              {seleccionadas.length} seleccionada{seleccionadas.length > 1 ? 's' : ''}
-            </p>
-          )}
         </Campo>
 
         <Campo label="Descripción" htmlFor="descripcion">
@@ -255,32 +300,97 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
             required
             className={inputClass}
           />
-          <p className="mt-1 text-right text-xs text-gray-400">
-            {form.descripcion.length}/1000
-          </p>
+          <p className="mt-1 text-right text-xs text-gray-400">{form.descripcion.length}/1000</p>
         </Campo>
 
-        <Campo label="Imagen" htmlFor="imagen">
+        <Campo label={`Fotos (${fotos.length}/${MAX_FOTOS})`} htmlFor="fotos">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => camaraRef.current?.click()}
+              disabled={cargando || fotos.length >= MAX_FOTOS}
+              className={botonSecundario}
+            >
+              <i className="fa-solid fa-camera"></i>
+              Tomar foto
+            </button>
+            <button
+              type="button"
+              onClick={() => galeriaRef.current?.click()}
+              disabled={cargando || fotos.length >= MAX_FOTOS}
+              className={botonSecundario}
+            >
+              <i className="fa-solid fa-images"></i>
+              Elegir fotos
+            </button>
+          </div>
+
+          {/* Cámara: en celular abre la cámara trasera directamente */}
           <input
-            ref={inputImagenRef}
-            id="imagen"
-            name="imagen"
+            ref={camaraRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleImagen}
-            disabled={cargando}
-            required
-            className="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-blue-950 file:px-4 file:py-2 file:font-medium file:text-white hover:file:bg-blue-900 disabled:opacity-60"
+            accept="image/*"
+            capture="environment"
+            onChange={handleCamara}
+            className="hidden"
           />
-        </Campo>
 
-        {preview && (
-          <img
-            src={preview}
-            alt="Vista previa"
-            className="h-48 w-full rounded-md border border-gray-200 object-cover"
+          {/* Galería: permite elegir varias fotos a la vez */}
+          <input
+            ref={galeriaRef}
+            id="fotos"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            multiple
+            onChange={handleGaleria}
+            className="hidden"
           />
-        )}
+
+          {fotos.length > 0 && (
+            <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {fotos.map((foto, i) => (
+                <li key={foto.id} className="relative">
+                  <img
+                    src={foto.url}
+                    alt={`Foto ${i + 1}`}
+                    className={`aspect-square w-full rounded-md object-cover ${
+                      i === 0 ? 'ring-2 ring-yellow-400' : 'border border-gray-200'
+                    }`}
+                  />
+
+                  {i === 0 ? (
+                    <span className="absolute left-1 top-1 rounded bg-yellow-400 px-1.5 py-0.5 text-[10px] font-semibold text-blue-950">
+                      Principal
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => hacerPrincipal(foto.id)}
+                      disabled={cargando}
+                      className="absolute left-1 top-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-blue-950 shadow hover:bg-white"
+                    >
+                      Hacer principal
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => quitarFoto(foto.id)}
+                    disabled={cargando}
+                    aria-label="Quitar foto"
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow hover:bg-red-700"
+                  >
+                    <i className="fa-solid fa-xmark"></i>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {fotos.length === 0 && (
+            <p className="mt-2 text-xs text-gray-500">Agrega una o varias fotos. La primera será la principal.</p>
+          )}
+        </Campo>
 
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -309,7 +419,6 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
   );
 }
 
-// Componente auxiliar para no repetir la etiqueta y el contenedor de cada campo
 function Campo({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
   return (
     <div>
@@ -326,7 +435,7 @@ function obtenerMensajeError(err: unknown): string {
     const data = err.response?.data as { error?: string; message?: string } | undefined;
     if (data?.error) return data.error;
     if (data?.message) return data.message;
-    if (err.response?.status === 413) return 'La imagen es demasiado grande.';
+    if (err.response?.status === 413) return 'Las fotos son demasiado pesadas en total.';
     if (err.response?.status === 400) return 'Revisa los datos del formulario.';
     return 'No se pudo conectar con el servidor.';
   }

@@ -2,6 +2,8 @@ import SubirProducto from "../components/SubirProducto";
 import SubirCategoria from "../components/SubirCategoria";
 import CuadernoVentas from "../components/CuadernoVentas";
 import logo from "../../public/hadajr_icono.svg"
+import PedidosAdmin from "../components/pedidosAdmin";
+import EliminarAgotados from "../components/EliminarAgotados";
 
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -56,7 +58,15 @@ const Admin = () => {
         <section className="flex w-full flex-col">
           <CuadernoVentas />
         </section>
-      </div>
+
+        <section className="flex w-full flex-col">
+          <PedidosAdmin />
+        </section>
+
+        <section>
+          <EliminarAgotados />
+        </section>
+      </div> 
     </main>
   );
 };

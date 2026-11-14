@@ -1,10 +1,9 @@
-import logo from "../../public/hadajr_icono.svg"
+import logo from "../../public/hadajr_icono.svg";
 import { useCarrito } from "../context/CarritoContext";
 import Buscador from "./Buscador";
 import RegisterButton from "./RegisterButton";
 import UbicationButton from "./UbicationButton";
 import { Link } from "react-router-dom";
-
 
 type Opcion = {
   name: string;
@@ -17,7 +16,7 @@ const opciones: Opcion[] = [
   { name: "ES", href: "#", icon: "fa-regular fa-flag" },
   { name: "Hola, Identifícate", href: "#", icon: null, tipo: "login" },
   { name: "Devoluciones y pedidos", href: "#", icon: "fa-solid fa-rotate-left" },
-  { name: "Carrito", href: "#", icon: "fa-solid fa-cart-shopping", tipo: "carrito" },
+  { name: "Carrito", href: "/carrito", icon: "fa-solid fa-cart-shopping", tipo: "carrito" },
 ];
 
 const Header = () => {
@@ -25,9 +24,10 @@ const Header = () => {
 
   return (
     <header className="flex w-full items-center justify-between gap-4 bg-blue-950 px-6 py-3">
-      <Link to="/" aria-label="Ir a la pagina principal">
-      <img src={logo} alt="HADAJR" className="h-18 w-20" />
+      <Link to="/" aria-label="Ir a la página principal">
+        <img src={logo} alt="HADAJR" className="h-18 w-20" />
       </Link>
+
       <UbicationButton />
       <Buscador />
 
@@ -37,14 +37,32 @@ const Header = () => {
             return <RegisterButton key={op.name} />;
           }
 
+          const contenido = (
+            <>
+              {op.icon && <i className={op.icon}></i>}
+              {op.tipo === "carrito" ? `Carrito (${cantidad})` : op.name}
+            </>
+          );
+
+          if (op.tipo === "carrito") {
+            return (
+              <Link
+                key={op.name}
+                to={op.href}
+                className="flex items-center gap-1 hover:underline"
+              >
+                {contenido}
+              </Link>
+            );
+          }
+
           return (
             <a
               key={op.name}
               href={op.href}
               className="flex items-center gap-1 hover:underline"
             >
-              {op.icon && <i className={op.icon}></i>}
-              {op.tipo === "carrito" ? `Carrito (${cantidad})` : op.name}
+              {contenido}
             </a>
           );
         })}

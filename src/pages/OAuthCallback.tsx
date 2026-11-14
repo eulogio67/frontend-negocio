@@ -2,6 +2,12 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
+interface MeResponse {
+  email: string;
+  rol: string;
+  nombre: string;
+}
+
 const OAuthCallback = () => {
   const navigate = useNavigate();
 
@@ -10,7 +16,6 @@ const OAuthCallback = () => {
 
     if (hashToken) {
       localStorage.setItem("token", hashToken);
-      // Quita el token de la barra de direcciones
       window.history.replaceState(null, "", "/oauth2/callback");
     }
 
@@ -20,14 +25,16 @@ const OAuthCallback = () => {
     }
 
     api
-      .get<{ email: string; rol: string }>("/api/auth/me")
+      .get<MeResponse>("/api/auth/me")
       .then(({ data }) => {
         localStorage.setItem("rol", data.rol);
+        localStorage.setItem("nombre", data.nombre ?? "");
         navigate(data.rol === "ROLE_ADMIN" ? "/admin" : "/", { replace: true });
       })
       .catch(() => {
         localStorage.removeItem("token");
         localStorage.removeItem("rol");
+        localStorage.removeItem("nombre");
         navigate("/admin", { replace: true });
       });
   }, [navigate]);

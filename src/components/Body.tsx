@@ -27,6 +27,7 @@ const Body = () => {
 
   return (
     <main className="w-full bg-gray-100">
+      
       {/* Banner principal */}
       <section className="w-full bg-blue-900 px-6 py-16 text-center text-white">
         <h1 className="text-4xl font-bold">Nueva colección HADAJR</h1>

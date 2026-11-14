@@ -4,6 +4,11 @@ export interface CategoriaResumen {
   nombre: string;
 }
 
+export interface ImagenProducto {
+  url: string;
+  orden: number;
+}
+
 export interface Producto {
   id: number;
   nombre: string;
@@ -12,4 +17,5 @@ export interface Producto {
   stock: number;
   imageUrl: string;
   categorias: CategoriaResumen[];
+  imagenes: ImagenProducto[];
 }
