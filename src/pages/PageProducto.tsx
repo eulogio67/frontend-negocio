@@ -5,7 +5,6 @@ import { productoService, type Producto } from "../services/productoService";
 import { useCarrito } from "../context/CarritoContext";
 
 
-const WHATSAPP = import.meta.env.VITE_WHATSAPP;
 
 const formatoPrecio = new Intl.NumberFormat("es-PE", {
   style: "currency",
@@ -59,11 +58,7 @@ const añadir = async () => {
     ? [producto.imageUrl]
     : [];
 
-  const mensaje = producto
-    ? encodeURIComponent(
-        `Hola, me interesa ${producto.nombre} (${formatoPrecio.format(producto.precio)}). ¿Tiene stock?`
-      )
-    : "";
+  
 
   return (
     <div className="min-h-screen bg-gray-100">

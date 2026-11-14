@@ -6,7 +6,6 @@ import PedidosAdmin from "../components/pedidosAdmin";
 import EliminarAgotados from "../components/EliminarAgotados";
 
 
-const API_URL = import.meta.env.VITE_API_URL;
 
 const Admin = () => {
   const token = localStorage.getItem("token");

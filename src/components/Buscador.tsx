@@ -102,7 +102,9 @@ const Buscador = () => {
                 />
                 <div className="flex flex-1 flex-col">
                   <span className="text-sm font-medium text-gray-900">{p.nombre}</span>
-                  <span className="text-xs text-gray-500">{p.categoria}</span>
+                  <span className="text-xs text-gray-500">
+                    {p.categorias.map((c) => c.nombre).join(", ")}
+                  </span>
                 </div>
                 <span className="text-sm font-semibold text-blue-950">
                   {formatoPrecio.format(p.precio)}
