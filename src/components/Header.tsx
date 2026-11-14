@@ -1,14 +1,10 @@
-import logo from "../assets/hadajr_icono.svg";
+import logo from "../../public/hadajr_icono.svg"
 import { useCarrito } from "../context/CarritoContext";
 import Buscador from "./Buscador";
 import RegisterButton from "./RegisterButton";
+import UbicationButton from "./UbicationButton";
+import { Link } from "react-router-dom";
 
-const UbicationButton = () => (
-  <div className="flex items-center gap-2 text-sm text-white">
-    <i className="fa-solid fa-location-crosshairs"></i>
-    <button className="hover:underline">Enviar a Peru</button>
-  </div>
-);
 
 type Opcion = {
   name: string;
@@ -29,7 +25,9 @@ const Header = () => {
 
   return (
     <header className="flex w-full items-center justify-between gap-4 bg-blue-950 px-6 py-3">
+      <Link to="/" aria-label="Ir a la pagina principal">
       <img src={logo} alt="HADAJR" className="h-18 w-20" />
+      </Link>
       <UbicationButton />
       <Buscador />
 

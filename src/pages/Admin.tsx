@@ -1,6 +1,10 @@
 import SubirProducto from "../components/SubirProducto";
 import SubirCategoria from "../components/SubirCategoria";
 import CuadernoVentas from "../components/CuadernoVentas";
+import logo from "../../public/hadajr_icono.svg"
+
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const Admin = () => {
   const token = localStorage.getItem("token");
@@ -36,7 +40,10 @@ const Admin = () => {
   return (
     <main className="min-h-screen bg-gray-100 py-8">
       <div className="mx-auto flex max-w-3xl flex-col gap-8 px-4">
-        <h1 className="text-3xl font-bold text-blue-950">Administración HADAJR</h1>
+          <h1 className="text-3xl font-bold text-blue-950">Administración HADAJR</h1>
+          <a href="/">
+            <img src={logo} alt="HADAJR" className="h-18 w-20"  />
+          </a>
 
         <section className="flex w-full flex-col">
           <SubirProducto />

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import ProductCard from "./ProductCard";
-import SubirProducto from "./SubirProducto";
 import { productoService, type Producto } from "../services/productoService";
+import Categorias from "./Categorias";
 
 const Body = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -36,23 +36,8 @@ const Body = () => {
         </button>
       </section>
 
-      <SubirProducto onCreado={cargarProductos} />
 
-      {/* Categorías */}
-      <section className="px-6 py-8">
-        <h2 className="mb-4 text-2xl font-bold text-gray-900">Categorías</h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {["Polos", "Casacas", "Pantalones", "Sandalias"].map((cat) => (
-            <a
-              key={cat}
-              href="#"
-              className="rounded-lg bg-white p-6 text-center font-medium shadow hover:shadow-md"
-            >
-              {cat}
-            </a>
-          ))}
-        </div>
-      </section>
+      <Categorias/>
 
       {/* Productos destacados */}
       <section className="px-6 pb-12">
