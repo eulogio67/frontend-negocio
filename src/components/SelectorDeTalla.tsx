@@ -8,7 +8,6 @@ interface Props {
 
 const SelectorTalla = ({ producto, onAgregar }: Props) => {
   const tallas = Object.entries(producto.tallas);
-  const disponibles = tallas.filter(([, qty]) => qty > 0);
   const unica = tallas.length === 1 ? tallas[0][0] : null;
 
   // Si solo hay una talla, queda seleccionada desde el inicio
