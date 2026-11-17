@@ -14,7 +14,8 @@ export interface Producto {
   nombre: string;
   precio: number;
   descripcion: string;
-  stock: number;
+  stock: number;                  // suma de todas las tallas
+  tallas: Record<string, number>; // ej: { S: 1, M: 2, L: 2, XL: 5 }
   imageUrl: string;
   categorias: CategoriaResumen[];
   imagenes: ImagenProducto[];

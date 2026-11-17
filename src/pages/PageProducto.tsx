@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Header from "../components/Header";
-import { productoService, type Producto } from "../services/productoService";
+import { productoService } from "../services/productoService";
 import { useCarrito } from "../context/CarritoContext";
-
-
+import SelectorTalla from "../components/SelectorDeTalla";
+import type { Producto } from "../types/Producto";
 
 const formatoPrecio = new Intl.NumberFormat("es-PE", {
   style: "currency",
@@ -13,30 +13,14 @@ const formatoPrecio = new Intl.NumberFormat("es-PE", {
 
 const PageProducto = () => {
   const { id } = useParams<{ id: string }>();
+  const { agregar } = useCarrito();
+
   const [producto, setProducto] = useState<Producto | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [indice, setIndice] = useState(0);
-  const [agregando, setAgregando] =useState(false);
-
-
-const { agregar } = useCarrito();
-const [mensajeCarrito, setMensajeCarrito] = useState<string | null>(null);
-
-const añadir = async () => {
-  if (!producto || agregando) return;
-  if (!localStorage.getItem("token")) {
-    window.location.href = `${import.meta.env.VITE_API_URL}/oauth2/authorization/google`;
-    return;
-  }
-  setAgregando(true);
-  try {
-    await agregar(producto.id);
-    setMensajeCarrito("Producto agregado al carrito.");
-  } finally {
-    setAgregando(false);
-  }
-};
+  const [mensajeCarrito, setMensajeCarrito] = useState<string | null>(null);
+  const [errorCarrito, setErrorCarrito] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -51,17 +35,34 @@ const añadir = async () => {
       .finally(() => setCargando(false));
   }, [id]);
 
-  // Todas las imágenes del producto, ordenadas: la primera es la principal
+  // Agrega al carrito con la talla elegida. Si no hay sesión, manda al login de Google.
+  const agregarConTalla = async (talla: string, cantidad: number) => {
+    if (!producto) return;
+    setMensajeCarrito(null);
+    setErrorCarrito(null);
+
+    if (!localStorage.getItem("token")) {
+      window.location.href = `${import.meta.env.VITE_API_URL}/oauth2/authorization/google`;
+      return;
+    }
+
+    try {
+      await agregar(producto.id, talla, cantidad);
+      setMensajeCarrito(`Agregado al carrito: ${cantidad} x talla ${talla}.`);
+    } catch (e: any) {
+      setErrorCarrito(e?.response?.data?.error ?? "No se pudo agregar al carrito.");
+    }
+  };
+
+  // Todas las imágenes ordenadas: la primera es la principal
   const imagenes = producto?.imagenes?.length
     ? [...producto.imagenes].sort((a, b) => a.orden - b.orden).map((i) => i.url)
     : producto?.imageUrl
     ? [producto.imageUrl]
     : [];
 
-  
-
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-white">
       <Header />
 
       <main className="mx-auto max-w-6xl px-4 py-8">
@@ -77,10 +78,10 @@ const añadir = async () => {
         )}
 
         {producto && (
-          <div className="grid gap-8 rounded-xl bg-white p-6 shadow-sm lg:grid-cols-2">
-            {/* Columna izquierda: todas las imágenes */}
+          <div className="grid gap-10 bg-white p-6 md:grid-cols-[1.5fr_1fr]">    
+            {/* Columna izquierda: imágenes */}
             <div className="flex flex-col gap-4 lg:flex-row">
-              <div className="order-2 flex gap-3 overflow-x-auto lg:order-1 lg:max-h-[560px] lg:flex-col lg:overflow-y-auto">
+              <div className="order-2 flex gap-3 overflow-x-auto lg:order-1 lg:max-h-140 lg:flex-col lg:overflow-y-auto">
                 {imagenes.map((url, i) => (
                   <button
                     key={url}
@@ -109,33 +110,32 @@ const añadir = async () => {
               </div>
             </div>
 
-            {/* Columna derecha: datos del producto */}
+            {/* Columna derecha: datos */}
             <div className="flex flex-col gap-4">
-              <span className="text-xs uppercase tracking-wide text-gray-500">
-                {producto.categorias.map((c) => c.nombre).join(", ")}
-              </span>
+              
+              <nav className="text-xs text-gray-500">
+                <Link to="/" className="underline">Inicio</Link>
+                <span className="mx-2">•</span>
+                <span>{producto.categorias[0]?.nombre ?? "Productos"}</span>
+              </nav>
               <h1 className="text-3xl font-extrabold uppercase leading-tight text-gray-900">
                 {producto.nombre}
               </h1>
               <p className="text-3xl font-bold text-blue-950">
                 {formatoPrecio.format(producto.precio)}
               </p>
-              <p className="text-sm text-gray-600">Stock disponible: {producto.stock}</p>
               <p className="whitespace-pre-line text-gray-700">{producto.descripcion}</p>
 
-              <button
-              type="button"
-              onClick={añadir}
-              disabled={agregando || producto.stock === 0}
-              className="flex items-center justify-center gap-2 rounded-md border border-blue-950 px-6 py-3 font-semibold text-blue-950 hover:bg-blue-50"
-              >
-    <i className="fa-solid fa-cart-plus"></i>
-  Agregar al carrito
-</button>
-{mensajeCarrito && <p className="text-center text-sm text-green-700">{mensajeCarrito}</p>}
-              <Link to="/" className="text-center text-sm text-blue-900 underline">
-                Seguir comprando
-              </Link>
+              <SelectorTalla key={producto.id} producto={producto} onAgregar={agregarConTalla} />
+              
+              {mensajeCarrito && (
+                <p className="text-center text-sm text-green-700">{mensajeCarrito}</p>
+              )}
+              {errorCarrito && (
+                <p className="text-center text-sm text-red-600">{errorCarrito}</p>
+              )}
+
+              
             </div>
           </div>
         )}

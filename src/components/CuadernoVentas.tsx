@@ -1,119 +1,133 @@
-import { useState, type FormEvent } from "react";
-
-type Origen = "Web" | "WhatsApp" | "Puesto";
-
-interface Venta {
-  id: number;
-  producto: string;
-  cantidad: number;
-  monto: number;
-  origen: Origen;
-}
+import { useEffect, useState } from "react";
+import { productoService } from "../services/productoService";
+import type { Producto } from "../types/Producto";
 
 const formato = new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" });
 
-const FORM_INICIAL = { producto: "", cantidad: "1", monto: "", origen: "WhatsApp" as Origen };
-
 const CuadernoVentas = () => {
-  const [ventas, setVentas] = useState<Venta[]>([]);
-  const [form, setForm] = useState(FORM_INICIAL);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [seleccionado, setSeleccionado] = useState<Producto | null>(null);
+  const [borrador, setBorrador] = useState<Record<string, string>>({});
+  const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const registrar = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setVentas((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        producto: form.producto.trim(),
-        cantidad: Number(form.cantidad),
-        monto: Number(form.monto),
-        origen: form.origen,
-      },
-    ]);
-    setForm(FORM_INICIAL);
+  const cargar = () =>
+    productoService
+      .obtenerTodos()
+      .then(setProductos)
+      .finally(() => setCargando(false));
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  const abrir = (p: Producto) => {
+    setSeleccionado(p);
+    setBorrador(Object.fromEntries(Object.entries(p.tallas).map(([t, q]) => [t, String(q)])));
+    setMensaje(null);
+    setError(null);
   };
 
-  const total = ventas.reduce((suma, v) => suma + v.monto, 0);
+  const guardar = async () => {
+    if (!seleccionado) return;
+    setError(null);
+    setMensaje(null);
+
+    const tallas: Record<string, number> = {};
+    for (const [t, valor] of Object.entries(borrador)) {
+      if (!/^\d+$/.test(valor)) {
+        setError(`Cantidad inválida para la talla ${t}.`);
+        return;
+      }
+      tallas[t] = Number(valor);
+    }
+
+    setGuardando(true);
+    try {
+      const actualizado = await productoService.actualizarTallas(seleccionado.id, tallas);
+      setProductos((prev) => prev.map((p) => (p.id === actualizado.id ? actualizado : p)));
+      setSeleccionado(actualizado);
+      setMensaje("Cantidades guardadas.");
+    } catch {
+      setError("No se pudieron guardar las cantidades.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  if (cargando) return <p className="text-gray-500">Cargando productos...</p>;
 
   return (
-    <div className="w-full rounded-xl bg-white p-6 shadow-md">
-      <h2 className="mb-4 text-xl font-bold text-blue-950">Cuaderno de ventas</h2>
+    <div className="flex flex-col gap-4">
+      {/* Lista de productos */}
+      <ul className="flex flex-col gap-3">
+        {productos.map((p) => (
+          <li key={p.id}>
+            <button
+              type="button"
+              onClick={() => abrir(p)}
+              className={`flex w-full items-center gap-4 border bg-white p-3 text-left hover:bg-gray-50 ${
+                seleccionado?.id === p.id ? "border-blue-950" : "border-gray-300"
+              }`}
+            >
+              <img src={p.imageUrl} alt={p.nombre} className="h-16 w-16 shrink-0 object-cover" />
+              <div className="flex flex-1 flex-col">
+                <span className="font-semibold text-gray-900">{p.nombre}</span>
+                <span className="text-sm text-gray-500">{formato.format(p.precio)}</span>
+              </div>
+              <span className="text-xs text-gray-500">Stock: {p.stock}</span>
+            </button>
+          </li>
+        ))}
+        {productos.length === 0 && <p className="text-sm text-gray-500">No hay productos.</p>}
+      </ul>
 
-      <form onSubmit={registrar} className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <input
-          placeholder="Producto"
-          value={form.producto}
-          onChange={(e) => setForm({ ...form, producto: e.target.value })}
-          required
-          className="col-span-2 rounded-md border border-gray-300 px-3 py-2 text-sm"
-        />
-        <input
-          type="number"
-          min="1"
-          placeholder="Cant."
-          value={form.cantidad}
-          onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
-          required
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-        />
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          placeholder="Monto"
-          value={form.monto}
-          onChange={(e) => setForm({ ...form, monto: e.target.value })}
-          required
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-        />
-        <select
-          value={form.origen}
-          onChange={(e) => setForm({ ...form, origen: e.target.value as Origen })}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-        >
-          <option>WhatsApp</option>
-          <option>Web</option>
-          <option>Puesto</option>
-        </select>
-        <button
-          type="submit"
-          className="col-span-2 rounded-md bg-yellow-400 px-4 py-2 font-semibold text-blue-950 hover:bg-yellow-300 sm:col-span-5"
-        >
-          Registrar venta
-        </button>
-      </form>
+      {/* Editor de cantidades, mismo estilo que PageProducto */}
+      {seleccionado && (
+        <div className="grid gap-6 border border-gray-300 bg-white p-5 sm:grid-cols-[120px_1fr]">
+          <img
+            src={seleccionado.imageUrl}
+            alt={seleccionado.nombre}
+            className="h-32 w-28 object-cover"
+          />
+          <div className="flex flex-col gap-3">
+            <span className="text-xs uppercase tracking-wide text-gray-500">
+              {seleccionado.categorias.map((c) => c.nombre).join(", ")}
+            </span>
+            <h3 className="text-xl font-semibold uppercase text-gray-900">{seleccionado.nombre}</h3>
+            <p className="text-lg font-bold text-blue-950">{formato.format(seleccionado.precio)}</p>
 
-      <table className="w-full text-sm">
-        <thead className="text-left text-gray-500">
-          <tr>
-            <th className="py-2">Producto</th>
-            <th>Cant.</th>
-            <th>Monto</th>
-            <th>Origen</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ventas.map((v) => (
-            <tr key={v.id} className="border-t">
-              <td className="py-2">{v.producto}</td>
-              <td>{v.cantidad}</td>
-              <td>{formato.format(v.monto)}</td>
-              <td>{v.origen}</td>
-            </tr>
-          ))}
-        </tbody>
-        {ventas.length > 0 && (
-          <tfoot>
-            <tr className="border-t font-semibold">
-              <td className="py-2" colSpan={2}>Total</td>
-              <td colSpan={2}>{formato.format(total)}</td>
-            </tr>
-          </tfoot>
-        )}
-      </table>
+            <div className="flex flex-col gap-2">
+              {Object.keys(borrador).map((t) => (
+                <div key={t} className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-gray-700">Talla {t}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={borrador[t]}
+                    onChange={(e) => setBorrador((prev) => ({ ...prev, [t]: e.target.value }))}
+                    className="w-24 border border-gray-400 px-3 py-2 text-sm"
+                  />
+                </div>
+              ))}
+            </div>
 
-      {ventas.length === 0 && (
-        <p className="text-sm text-gray-500">Todavía no hay ventas registradas.</p>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            {mensaje && <p className="text-sm text-green-700">{mensaje}</p>}
+
+            <button
+              type="button"
+              onClick={guardar}
+              disabled={guardando}
+              className="w-full border border-gray-400 py-3 text-sm uppercase tracking-wide hover:bg-gray-50 disabled:opacity-60"
+            >
+              {guardando ? "Guardando..." : "Guardar cantidades"}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

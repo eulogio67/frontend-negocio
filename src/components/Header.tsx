@@ -1,4 +1,4 @@
-import logo from "../../public/hadajr_icono.svg";
+import logo from "../assets/hadajr_icono.svg";
 import { useCarrito } from "../context/CarritoContext";
 import Buscador from "./Buscador";
 import RegisterButton from "./RegisterButton";
@@ -20,7 +20,8 @@ const opciones: Opcion[] = [
 ];
 
 const Header = () => {
-  const { cantidad } = useCarrito();
+
+  const { cantidad, abrirCarrito } = useCarrito();
 
   return (
     <header className="flex w-full items-center justify-between gap-4 bg-blue-950 px-6 py-3">
@@ -46,13 +47,10 @@ const Header = () => {
 
           if (op.tipo === "carrito") {
             return (
-              <Link
-                key={op.name}
-                to={op.href}
-                className="flex items-center gap-1 hover:underline"
-              >
-                {contenido}
-              </Link>
+              <button onClick={abrirCarrito} className="flex items-center gap-1 hover:underline">
+  <i className="fa-solid fa-cart-shopping"></i>
+  Carrito ({cantidad})
+</button>
             );
           }
 

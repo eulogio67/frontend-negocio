@@ -34,6 +34,9 @@ export const productoService = {
     params: { q: texto },
   });
   return data;
-},
+  },
+
+  actualizarTallas: async (id: number, tallas: Record<string, number>): Promise<Producto> =>
+  (await api.put<Producto>(`/api/productos/${id}/tallas`, { tallas })).data,
 };
 

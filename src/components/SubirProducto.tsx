@@ -12,26 +12,31 @@ interface FormularioProducto {
   nombre: string;
   precio: string;
   descripcion: string;
-  stock: string;
 }
 
 interface FotoSeleccionada {
   id: string;
   file: File;
-  url: string; // URL temporal para la vista previa
+  url: string;
+}
+
+interface FilaTalla {
+  id: string;
+  talla: string;
+  cantidad: string; // string para que el input se pueda dejar vacío mientras escribes
 }
 
 const FORM_INICIAL: FormularioProducto = {
   nombre: '',
   precio: '',
   descripcion: '',
-  stock: '',
 };
 
+const crearFila = (): FilaTalla => ({ id: crypto.randomUUID(), talla: '', cantidad: '' });
+
 // Debe coincidir con spring.servlet.multipart.max-file-size del backend
-const TAMANO_MAXIMO = 10 * 1024 * 1024; // 10 MB
+const TAMANO_MAXIMO = 10 * 1024 * 1024;
 const MAX_FOTOS = 10;
-// Las fotos de iPhone pueden llegar como HEIC
 const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
 
 const inputClass =
@@ -43,6 +48,7 @@ const botonSecundario =
 
 export default function SubirProducto({ onCreado }: SubirProductoProps) {
   const [form, setForm] = useState<FormularioProducto>(FORM_INICIAL);
+  const [filasTalla, setFilasTalla] = useState<FilaTalla[]>([crearFila()]);
   const [fotos, setFotos] = useState<FotoSeleccionada[]>([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +63,6 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
   const camaraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
 
-  // Guarda las fotos en una ref para liberar sus URLs al desmontar
   const fotosRef = useRef<FotoSeleccionada[]>([]);
   fotosRef.current = fotos;
 
@@ -77,12 +82,43 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const toggleCategoria = (id: number) => {
-    setSeleccionadas((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+  // ---- Tallas ----
+  const actualizarFila = (id: string, campo: 'talla' | 'cantidad', valor: string) => {
+    setFilasTalla((prev) => prev.map((f) => (f.id === id ? { ...f, [campo]: valor } : f)));
   };
 
+  const agregarFila = () => setFilasTalla((prev) => [...prev, crearFila()]);
+
+  const quitarFila = (id: string) => {
+    setFilasTalla((prev) => (prev.length > 1 ? prev.filter((f) => f.id !== id) : prev));
+  };
+
+  // Devuelve el mensaje de error o null, y las tallas listas para enviar
+  const validarTallas = (): { error: string | null; tallas: string[] } => {
+    const tallas: string[] = [];
+    const vistas = new Set<string>();
+
+    for (const fila of filasTalla) {
+      const talla = fila.talla.trim().toUpperCase();
+      if (!talla && fila.cantidad === '') continue; // fila vacía: se ignora
+
+      if (!talla) return { error: 'Cada fila de talla necesita un nombre (ej. S, M, L).', tallas: [] };
+      if (vistas.has(talla)) return { error: `La talla ${talla} está repetida.`, tallas: [] };
+      if (fila.cantidad === '' || !/^\d+$/.test(fila.cantidad)) {
+        return { error: `Indica una cantidad válida para la talla ${talla}.`, tallas: [] };
+      }
+
+      vistas.add(talla);
+      tallas.push(`${talla}:${Number(fila.cantidad)}`);
+    }
+
+    if (tallas.length === 0) {
+      return { error: 'Agrega al menos una talla con su cantidad.', tallas: [] };
+    }
+    return { error: null, tallas };
+  };
+
+  // ---- Fotos ----
   const validarArchivo = (file: File): string | null => {
     if (!TIPOS_PERMITIDOS.includes(file.type)) {
       return `"${file.name}" no es un formato permitido (JPG, PNG, WEBP o HEIC).`;
@@ -93,7 +129,6 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     return null;
   };
 
-  // Recibe archivos de la cámara o de la galería
   const agregarArchivos = (lista: FileList | null) => {
     setError(null);
     if (!lista || lista.length === 0) return;
@@ -113,8 +148,7 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     }
 
     setFotos((prev) => {
-      const total = prev.length + nuevas.length;
-      if (total > MAX_FOTOS) {
+      if (prev.length + nuevas.length > MAX_FOTOS) {
         setError(`Puedes subir como máximo ${MAX_FOTOS} fotos por producto.`);
         nuevas.forEach((f) => URL.revokeObjectURL(f.url));
         return prev;
@@ -125,7 +159,7 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
 
   const handleCamara = (e: ChangeEvent<HTMLInputElement>) => {
     agregarArchivos(e.target.files);
-    e.target.value = ''; // permite volver a tomar o elegir el mismo archivo
+    e.target.value = '';
   };
 
   const handleGaleria = (e: ChangeEvent<HTMLInputElement>) => {
@@ -141,7 +175,6 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     });
   };
 
-  // La primera foto es la principal: esta la mueve al inicio
   const hacerPrincipal = (id: string) => {
     setFotos((prev) => {
       const foto = prev.find((f) => f.id === id);
@@ -150,16 +183,27 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     });
   };
 
+  const toggleCategoria = (id: number) => {
+    setSeleccionadas((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  // ---- Envío ----
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setCreado(null);
 
+    const { error: errorTallas, tallas } = validarTallas();
+    if (errorTallas) {
+      setError(errorTallas);
+      return;
+    }
     if (fotos.length === 0) {
       setError('Debes agregar al menos una foto.');
       return;
     }
-
     if (seleccionadas.length === 0) {
       setError('Debes seleccionar al menos una categoría.');
       return;
@@ -169,10 +213,10 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     formData.append('nombre', form.nombre.trim());
     formData.append('precio', form.precio);
     formData.append('descripcion', form.descripcion.trim());
-    formData.append('stock', form.stock);
-    // Un campo por cada archivo, en el orden elegido: el primero es la principal
+    // Un campo por talla, formato "S:1"
+    tallas.forEach((t) => formData.append('tallas', t));
+    // El primer archivo es la principal
     fotos.forEach((f) => formData.append('imagenes', f.file));
-    // Un campo por cada ID: Spring lo convierte en la lista categoriaIds
     seleccionadas.forEach((id) => formData.append('categoriaIds', String(id)));
 
     setCargando(true);
@@ -180,6 +224,7 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
       const { data } = await api.post<Producto>('/api/productos', formData);
       setCreado(data);
       setForm(FORM_INICIAL);
+      setFilasTalla([crearFila()]);
       setSeleccionadas([]);
       setMenuAbierto(false);
       fotos.forEach((f) => URL.revokeObjectURL(f.url));
@@ -229,19 +274,53 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
           />
         </Campo>
 
-        <Campo label="Stock" htmlFor="stock">
-          <input
-            id="stock"
-            name="stock"
-            type="number"
-            min="0"
-            step="1"
-            value={form.stock}
-            onChange={handleChange}
+        <Campo label="Tallas y cantidades" htmlFor="tallas">
+          <div className="space-y-2">
+            {filasTalla.map((fila) => (
+              <div key={fila.id} className="flex items-center gap-2">
+                <input
+                  placeholder="Talla (S, M, L...)"
+                  value={fila.talla}
+                  onChange={(e) => actualizarFila(fila.id, 'talla', e.target.value)}
+                  maxLength={10}
+                  disabled={cargando}
+                  className={`${inputClass} uppercase`}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Cantidad"
+                  value={fila.cantidad}
+                  onChange={(e) => actualizarFila(fila.id, 'cantidad', e.target.value)}
+                  disabled={cargando}
+                  className={inputClass}
+                />
+                <button
+                  type="button"
+                  onClick={() => quitarFila(fila.id)}
+                  disabled={cargando || filasTalla.length === 1}
+                  aria-label="Quitar talla"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={agregarFila}
             disabled={cargando}
-            required
-            className={inputClass}
-          />
+            className="mt-2 text-sm font-medium text-blue-950 underline disabled:opacity-60"
+          >
+            + Agregar talla
+          </button>
+
+          <p className="mt-1 text-xs text-gray-500">
+            El stock total se calcula sumando las cantidades de cada talla.
+          </p>
         </Campo>
 
         <Campo label="Categorías" htmlFor="categorias">
@@ -325,7 +404,6 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
             </button>
           </div>
 
-          {/* Cámara: en celular abre la cámara trasera directamente */}
           <input
             ref={camaraRef}
             type="file"
@@ -335,7 +413,6 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
             className="hidden"
           />
 
-          {/* Galería: permite elegir varias fotos a la vez */}
           <input
             ref={galeriaRef}
             id="fotos"
@@ -403,6 +480,9 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
             <p>Producto "{creado.nombre}" creado correctamente.</p>
             <p className="mt-1 text-xs">
               Categorías: {creado.categorias.map((c) => c.nombre).join(', ')}
+            </p>
+            <p className="mt-1 text-xs">
+              Stock total: {creado.stock}
             </p>
           </div>
         )}
