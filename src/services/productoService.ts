@@ -5,6 +5,7 @@ import type { Producto } from '../types/Producto';
 export type {Producto};
 
 
+
 export const productoService = {
   /**
    * Lista productos. Si se pasa categoría, el backend filtra.
@@ -36,7 +37,10 @@ export const productoService = {
   return data;
   },
 
-  actualizarTallas: async (id: number, tallas: Record<string, number>): Promise<Producto> =>
-  (await api.put<Producto>(`/api/productos/${id}/tallas`, { tallas })).data,
+  actualizar: async (
+  id: number,
+  datos: { nombre: string; descripcion: string; tallas: Record<string, number> }
+): Promise<Producto> => (await api.put<Producto>(`/api/productos/${id}`, datos)).data,
+
 };
 
