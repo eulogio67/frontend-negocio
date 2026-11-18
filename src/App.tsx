@@ -6,7 +6,7 @@ import PageProducto from "./pages/PageProducto";
 import DrawerCarrito from "./components/DrawerCarrito";
 
 const App = () => (
-  <>
+  <div className="touch-pan-x touch-pan-y">
   <Routes>
     <Route path="/" element={<Tienda />} />
     <Route path="/admin" element={<Admin />} />
@@ -15,7 +15,7 @@ const App = () => (
   </Routes>
 
   <DrawerCarrito />
-    </>
+    </div>
 
 );
 
