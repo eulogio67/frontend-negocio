@@ -39,7 +39,7 @@ export const productoService = {
 
   actualizar: async (
   id: number,
-  datos: { nombre: string; descripcion: string; precio: number, tallas: Record<string, number> }
+  datos: { nombre: string; descripcion: string; tallas: Record<string, number> }
 ): Promise<Producto> => (await api.put<Producto>(`/api/productos/${id}`, datos)).data,
 
 };

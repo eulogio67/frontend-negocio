@@ -27,7 +27,6 @@ const CuadernoVentas = () => {
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [precio, setPrecio] = useState("");
 
   useEffect(() => {
     productoService
@@ -84,11 +83,6 @@ const CuadernoVentas = () => {
     setMensaje(null);
 
     if (!nombre.trim()) return setError("El nombre no puede estar vacío.");
-    
-    const precioNum = Number(precio);
-    if (!precio || Number.isNaN(precioNum) || precioNum <= 0) {
-        return setError("El precio debe ser mayor que 0.");
-    }
 
     const tallas: Record<string, number> = {};
     for (const f of filas) {
@@ -105,9 +99,7 @@ const CuadernoVentas = () => {
       const actualizado = await productoService.actualizar(seleccionado.id, {
         nombre: nombre.trim(),
         descripcion: descripcion.trim(),
-        precio: precioNum,
         tallas,
-
       });
       setProductos((prev) => prev.map((p) => (p.id === actualizado.id ? actualizado : p)));
       cargarEnEditor(actualizado);
@@ -171,16 +163,6 @@ const CuadernoVentas = () => {
               onChange={(e) => setDescripcion(e.target.value)}
               maxLength={1000}
               rows={3}
-              className="border border-gray-400 px-3 py-2 text-sm"
-            />
-
-            <label className="text-xs font-medium uppercase text-gray-600">Precio (S/)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={precio}
-              onChange={(e) => setPrecio(e.target.value)}
               className="border border-gray-400 px-3 py-2 text-sm"
             />
 
