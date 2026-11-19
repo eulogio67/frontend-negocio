@@ -6,6 +6,7 @@ interface MeResponse {
   email: string;
   rol: string;
   nombre: string;
+  telefono: string;
 }
 
 const OAuthCallback = () => {
@@ -29,6 +30,10 @@ const OAuthCallback = () => {
       .then(({ data }) => {
         localStorage.setItem("rol", data.rol);
         localStorage.setItem("nombre", data.nombre ?? "");
+        if (!data.telefono) {
+          navigate("/completar-telefono", { replace: true });
+          return;
+        }
         navigate(data.rol === "ROLE_ADMIN" ? "/admin" : "/", { replace: true });
       })
       .catch(() => {

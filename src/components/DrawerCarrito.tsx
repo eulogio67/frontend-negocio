@@ -33,8 +33,15 @@ const DrawerCarrito = () => {
     try {
       const pedido = await pedidoService.crear();
       const lineas = pedido.items
-        .map((l) => `- ${l.cantidad} x ${l.nombre} (${formato.format(l.precioUnitario * l.cantidad)})`)
+        .map(
+          (l) =>
+            `- ${l.nombre} | Talla ${l.talla} | Cant. ${l.cantidad} | ${formato.format(
+            l.precioUnitario * l.cantidad
+                  )}`
+          )
         .join("\n");
+
+
       const texto =
         `Hola, quiero confirmar mi pedido #${pedido.id}:\n${lineas}\n` +
         `Total: ${formato.format(pedido.total)}\n` +

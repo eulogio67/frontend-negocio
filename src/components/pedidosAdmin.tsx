@@ -30,6 +30,19 @@ const PedidosAdmin = () => {
     }
   };
 
+    const rechazar = async (id: number) => {
+    if (!confirm(`¿Rechazar el pedido #${id}? No se descontará stock.`)) return;
+    setProcesando(id);
+    try {
+      await pedidoService.rechazar(id);
+      await cargar();
+    } catch (e) {
+      setError(isAxiosError(e) ? e.response?.data?.error ?? "No se pudo rechazar." : "Error inesperado.");
+    } finally {
+      setProcesando(null);
+    }
+  };
+
   return (
     <div className="w-full rounded-xl bg-white p-6 shadow-md">
       <h2 className="mb-4 text-xl font-bold text-blue-950">Pedidos pendientes de pago</h2>
@@ -43,7 +56,19 @@ const PedidosAdmin = () => {
           <li key={p.id} className="rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <span className="font-semibold">Pedido #{p.id}</span>
-              <span className="text-sm text-gray-500">{p.clienteEmail}</span>
+              <div className="flex flex-col items-end text-sm text-gray-500">
+  <span>{p.clienteEmail}</span>
+  {p.clienteTelefono && (
+    <a
+      href={`https://wa.me/51${p.clienteTelefono}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-semibold text-green-700 underline"
+    >
+      📱 {p.clienteTelefono}
+    </a>
+  )}
+</div>
             </div>
             <ul className="mt-2 text-sm text-gray-700">
               {p.items.map((l, i) => (
@@ -60,6 +85,14 @@ const PedidosAdmin = () => {
                 className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
               >
                 {procesando === p.id ? "Confirmando..." : "Confirmar pago"}
+              </button>
+
+              <button
+                onClick={() => rechazar(p.id)}
+                disabled={procesando === p.id}
+                className="rounded-md border border-red-600 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+              >
+                Rechazar pago
               </button>
             </div>
           </li>
