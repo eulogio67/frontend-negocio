@@ -1,51 +1,55 @@
-const UbicationButton = () => (
-  <div className="flex items-center gap-2 text-sm text-white">
-    <i className="fa-solid fa-location-crosshairs text-yellow-400"></i>
-
-    <button className="group relative isolate overflow-hidden rounded-full px-4 py-1.5 font-medium">
-      {/* Fondo líquido: manchas de color que se mueven dentro del botón */}
-      <span aria-hidden className="blob-fondo pointer-events-none absolute inset-0 -z-10" />
-
-      <span className="relative z-10 text-white drop-shadow group-hover:underline">
-        Envios a Perú 24/7
-      </span>
-
-      <style>{`
-        .blob-fondo {
-          background: #1e3a8a;
-          filter: blur(6px) saturate(1.4);
-        }
-        .blob-fondo::before,
-        .blob-fondo::after {
-          content: "";
-          position: absolute;
-          width: 60%;
-          height: 160%;
-          border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
-          filter: blur(4px);
-          opacity: 0.85;
-        }
-        .blob-fondo::before {
-          background: radial-gradient(circle, #f472b6, transparent 70%);
-          animation: moco-a 6s ease-in-out infinite alternate;
-        }
-        .blob-fondo::after {
-          background: radial-gradient(circle, #facc15, transparent 70%);
-          animation: moco-b 7s ease-in-out infinite alternate;
-        }
-        @keyframes moco-a {
-          0%   { transform: translate(-20%, -10%) rotate(0deg) scale(1);   border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%; }
-          50%  { transform: translate(60%, 10%)   rotate(120deg) scale(1.2); border-radius: 60% 40% 30% 70% / 55% 40% 60% 45%; }
-          100% { transform: translate(120%, -5%)  rotate(240deg) scale(0.9); border-radius: 35% 65% 55% 45% / 60% 35% 65% 40%; }
-        }
-        @keyframes moco-b {
-          0%   { transform: translate(120%, 10%) rotate(0deg) scale(0.9); border-radius: 55% 45% 40% 60% / 40% 60% 40% 60%; }
-          50%  { transform: translate(20%, -15%) rotate(-100deg) scale(1.15); border-radius: 30% 70% 60% 40% / 50% 50% 50% 50%; }
-          100% { transform: translate(-30%, 15%) rotate(-200deg) scale(1); border-radius: 65% 35% 45% 55% / 35% 65% 35% 65%; }
-        }
-      `}</style>
-    </button>
-  </div>
+const IconoUbicacion = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
 );
+
+const IconoChevron = ({ size = 12 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
+type Props = { variant?: "compact" | "full" };
+
+const UbicationButton = ({ variant = "compact" }: Props) => {
+  const contenido = (
+    <>
+      <IconoUbicacion size={variant === "full" ? 18 : 20} />
+      <span className="flex flex-col leading-tight">
+        <span className="text-[11px] text-gray-300">Enviar a</span>
+        <span className="flex items-center gap-1 text-sm font-semibold text-white">
+          Perú 24/7
+          <IconoChevron size={11} />
+        </span>
+      </span>
+    </>
+  );
+
+  if (variant === "full") {
+    return (
+      <button
+        type="button"
+        aria-label="Elegir ubicación de envío"
+        className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-white hover:bg-blue-900"
+      >
+        {contenido}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label="Elegir ubicación de envío"
+      className="flex items-center gap-1.5 rounded px-2 py-1 text-left hover:bg-blue-900"
+    >
+      {contenido}
+    </button>
+  );
+};
 
 export default UbicationButton;

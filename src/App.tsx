@@ -6,6 +6,9 @@ import PageProducto from "./pages/PageProducto";
 import DrawerCarrito from "./components/DrawerCarrito";
 import CompletarTelefono from "./pages/CompletarTelefono";
 import PagePrivacidad from "./pages/PagePrivacidad";
+import CategoriaPage from "./pages/CategoriaPage";
+import PageDevoluciones from "./pages/PageDevoluciones";
+
 
 const App = () => (
   <>
@@ -16,6 +19,9 @@ const App = () => (
     <Route path="/producto/:id" element={<PageProducto />} />
     <Route path="/completar-telefono" element={<CompletarTelefono />}/>
     <Route path="/privacidad" element={<PagePrivacidad />} />
+    <Route path="/categorias/:id" element={<CategoriaPage />} />
+    <Route path="/devoluciones" element={<PageDevoluciones />} />
+
   </Routes>
 
   <DrawerCarrito />

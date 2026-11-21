@@ -30,12 +30,6 @@ export const productoService = {
     }
   },
 
-  buscar: async (texto: string): Promise<Producto[]> => {
-  const { data } = await api.get<Producto[]>('/api/productos/buscar', {
-    params: { q: texto },
-  });
-  return data;
-  },
 
   actualizar: async (
   id: number,
@@ -47,5 +41,18 @@ export const productoService = {
   }
 ): Promise<Producto> => (await api.put<Producto>(`/api/productos/${id}`, datos)).data,
 
+buscar: async (
+  termino: string,
+  opciones?: { categoriaId?: number; signal?: AbortSignal }
+): Promise<Producto[]> => {
+  const params = new URLSearchParams();
+  if (termino.trim()) params.set("q", termino.trim());
+  if (opciones?.categoriaId) params.set("categoriaId", String(opciones.categoriaId));
+
+  const { data } = await api.get<Producto[]>(`/api/productos/buscar?${params}`, {
+    signal: opciones?.signal,
+  });
+  return data;
+},
 };
 
