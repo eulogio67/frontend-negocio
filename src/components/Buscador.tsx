@@ -228,7 +228,7 @@ const Buscador = () => {
       {dropdownCat && (
         <div
           role="listbox"
-          className="absolute left-0 top-full z-[60] mt-1 max-h-80 w-72 max-w-[90vw] overflow-y-auto rounded-md bg-white py-1 shadow-lg"
+          className="absolute left-0 top-full z-60 mt-1 max-h-80 w-72 max-w-[90vw] overflow-y-auto rounded-md bg-white py-1 shadow-lg"
         >
           {/* Chip para quitar filtro (solo si hay una categoría activa) */}
           {categoriaSel && (

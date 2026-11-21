@@ -92,7 +92,7 @@ const Categorias = () => {
                         to={`/categorias/${cat.id}`}
                         className="group flex flex-col"
                       >
-                        <div className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-orange-50 to-gray-100">
+                        <div className="flex aspect-4/3 w-full items-center justify-center overflow-hidden rounded-md bg-linear-to-b from-orange-50 to-gray-100">
                           {cat.imageUrl ? (
                             <img
                               src={cat.imageUrl}

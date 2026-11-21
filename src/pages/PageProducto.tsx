@@ -101,7 +101,7 @@ const PageProducto = () => {
               <div
                 ref={carruselRef}
                 onScroll={onScrollCarrusel}
-                className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="flex snap-x snap-mandatory overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden"
               >
                 {imagenes.map((url, i) => (
                   <button

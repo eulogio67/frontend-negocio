@@ -81,7 +81,7 @@ const Body = () => {
             className="
               flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2
               scroll-pl-6 scroll-pr-6
-              [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden
+              scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden
               sm:grid sm:snap-none sm:grid-cols-2 sm:gap-6 sm:overflow-visible
               lg:grid-cols-4
             "

@@ -71,7 +71,7 @@ const CategoriaPage = () => {
               className="
                 -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2
                 scroll-pl-4 scroll-pr-4
-                [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden
+                scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden
                 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:gap-6 sm:overflow-visible sm:px-0 sm:pb-0
                 lg:grid-cols-4
               "

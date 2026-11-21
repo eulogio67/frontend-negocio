@@ -35,7 +35,7 @@ const IconoCerrar = () => (
 
 const BadgeCarrito = ({ cantidad }: { cantidad: number }) =>
   cantidad > 0 ? (
-    <span className="absolute -right-2 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-yellow-400 px-1 text-[10px] font-bold leading-none text-blue-950">
+    <span className="absolute -right-2 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1 text-[10px] font-bold leading-none text-blue-950">
       {cantidad > 99 ? "99+" : cantidad}
     </span>
   ) : null;

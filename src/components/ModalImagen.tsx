@@ -120,7 +120,7 @@ const ModalImagen = ({ imagenes, indiceInicial, onCerrar, alt = "" }: Props) => 
   const zoomeado = scale > 1;
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-black">
+    <div className="fixed inset-0 z-100 flex flex-col bg-black">
       {/* Botón atrás arriba-izquierda */}
       <button
         type="button"
@@ -143,7 +143,7 @@ const ModalImagen = ({ imagenes, indiceInicial, onCerrar, alt = "" }: Props) => 
         className={`flex h-full w-full ${
           zoomeado
             ? "overflow-hidden"
-            : "snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            : "snap-x snap-mandatory overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden"
         }`}
       >
         {imagenes.map((url, i) => (

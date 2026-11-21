@@ -58,7 +58,7 @@ const ProductCard = ({ producto, priority = false }: ProductCardProps) => {
       draggable={false}
     >
       <article className="flex flex-col">
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-gray-100">
+        <div className="relative aspect-4/5 w-full overflow-hidden bg-gray-100">
           <img
             src={optimizarImagen(principal, { width: 400 })}
             srcSet={srcSetCloudinary(principal, ANCHOS)}
