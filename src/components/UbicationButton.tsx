@@ -20,7 +20,7 @@ const UbicationButton = ({ variant = "compact" }: Props) => {
     <>
       <IconoUbicacion size={variant === "full" ? 18 : 20} />
       <span className="flex flex-col leading-tight">
-        <span className="text-[11px] text-gray-300">Enviar a</span>
+        <span className="text-[11px] text-gray-300">Envios a</span>
         <span className="flex items-center gap-1 text-sm font-semibold text-white">
           Perú 24/7
           <IconoChevron size={11} />

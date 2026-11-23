@@ -28,7 +28,6 @@ async function manejarRespuesta<T>(res: Response): Promise<T> {
     throw new Error(mensaje);
   }
 
-  // 204 No Content (por ejemplo, al eliminar) no tiene cuerpo
   if (res.status === 204) {
     return undefined as T;
   }
@@ -83,6 +82,7 @@ export async function actualizarCategoria(
   return manejarRespuesta<Categoria>(res);
 }
 
+// ✅ NOMBRE CORRECTO
 export async function eliminarCategoria(id: number, token: string): Promise<void> {
   const res = await fetch(`${BASE}/${id}`, {
     method: "DELETE",
