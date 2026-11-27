@@ -5,7 +5,6 @@ import EditarProductos from "../components/EditarProductos";
 import PedidosAdmin from "../components/pedidosAdmin";
 import EliminarAgotados from "../components/EliminarAgotados";
 import ProcesarIA from "../components/ProcesarIA";
-import logo from "../assets/hadajr_icono.svg";
 import Vender from "../components/Vender";
 import Ventas from "../components/Ventas";
 
