@@ -68,12 +68,9 @@ const Admin = () => {
   return (
     <main className="min-h-screen bg-gray-100 py-6 sm:py-8">
       <div className="mx-auto flex max-w-3xl flex-col gap-4 px-3 sm:gap-6 sm:px-4">
-        <a href="/" className="flex items-center gap-3 sm:gap-4">
-          <img src={logo} alt="HADAJR" className="h-12 w-12 sm:h-16 sm:w-16" />
           <h1 className="text-xl font-bold text-blue-950 sm:text-3xl">
-            Administración HADAJR
+            Administración 
           </h1>
-        </a>
 
         {/* Selector en móvil */}
         <div className="sm:hidden">
