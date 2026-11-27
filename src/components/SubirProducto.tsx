@@ -3,6 +3,8 @@ import { isAxiosError } from 'axios';
 import api from '../api/axios';
 import { listarCategorias, type Categoria } from '../services/categoriaService';
 import type { Producto } from '../types/Producto';
+import { comprimirImagen } from "../utils/comprimirImagen";
+
 
 interface SubirProductoProps {
   onCreado?: () => void;
@@ -59,6 +61,9 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
   const [errorCategorias, setErrorCategorias] = useState<string | null>(null);
   const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [comprimiendo, setComprimiendo] = useState(false);
+  const [progreso, setProgreso] = useState(0);
+  const [sesionExpirada, setSesionExpirada] = useState(false);
 
   const camaraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
@@ -129,21 +134,27 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     return null;
   };
 
-  const agregarArchivos = (lista: FileList | null) => {
-    setError(null);
-    if (!lista || lista.length === 0) return;
 
-    const nuevas: FotoSeleccionada[] = [];
+const agregarArchivos = async (lista: FileList | null) => {
+  setError(null);
+  if (!lista || lista.length === 0) return;
+
+  setComprimiendo(true); // estado para feedback
+  const nuevas: FotoSeleccionada[] = [];
+
+  try {
     for (const file of Array.from(lista)) {
       const problema = validarArchivo(file);
       if (problema) {
         setError(problema);
         return;
       }
+
+      const comprimida = await comprimirImagen(file);
       nuevas.push({
-        id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
-        file,
-        url: URL.createObjectURL(file),
+        id: `${comprimida.name}-${comprimida.size}-${crypto.randomUUID()}`,
+        file: comprimida,
+        url: URL.createObjectURL(comprimida),
       });
     }
 
@@ -155,7 +166,10 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
       }
       return [...prev, ...nuevas];
     });
-  };
+  } finally {
+    setComprimiendo(false);
+  }
+};
 
   const handleCamara = (e: ChangeEvent<HTMLInputElement>) => {
     agregarArchivos(e.target.files);
@@ -220,21 +234,43 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
     seleccionadas.forEach((id) => formData.append('categoriaIds', String(id)));
 
     setCargando(true);
-    try {
-      const { data } = await api.post<Producto>('/api/productos', formData);
-      setCreado(data);
-      setForm(FORM_INICIAL);
-      setFilasTalla([crearFila()]);
-      setSeleccionadas([]);
-      setMenuAbierto(false);
-      fotos.forEach((f) => URL.revokeObjectURL(f.url));
-      setFotos([]);
-      onCreado?.();
-    } catch (err) {
+setProgreso(0);
+setSesionExpirada(false);
+
+try {
+  const { data } = await api.post<Producto>('/api/productos', formData, {
+    timeout: 120_000, // 2 min máximo
+    onUploadProgress: (evt) => {
+      if (evt.total) {
+        setProgreso(Math.round((evt.loaded * 100) / evt.total));
+      }
+    },
+  });
+  setCreado(data);
+  setForm(FORM_INICIAL);
+  setFilasTalla([crearFila()]);
+  setSeleccionadas([]);
+  setMenuAbierto(false);
+  fotos.forEach((f) => URL.revokeObjectURL(f.url));
+  setFotos([]);
+  onCreado?.();
+} catch (err) {
+  if (isAxiosError(err)) {
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      setSesionExpirada(true);
+      setError('Tu sesión ha expirado. Vuelve a iniciar sesión.');
+    } else if (err.code === 'ECONNABORTED') {
+      setError('La subida tardó demasiado. Verifica tu conexión e inténtalo de nuevo.');
+    } else {
       setError(obtenerMensajeError(err));
-    } finally {
-      setCargando(false);
     }
+  } else {
+    setError('Ocurrió un error inesperado.');
+  }
+} finally {
+  setCargando(false);
+  setProgreso(0);
+}
   };
 
   const nombresSeleccionados = categoriasDisponibles
@@ -487,13 +523,44 @@ export default function SubirProducto({ onCreado }: SubirProductoProps) {
           </div>
         )}
 
+        {sesionExpirada && (
+  <div className="rounded-md border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900">
+    <p className="font-semibold">Tu sesión ha expirado</p>
+    <p className="mt-1 text-xs">
+      Los datos del formulario se conservan. Vuelve a iniciar sesión para continuar.
+    </p>
+    <button
+      type="button"
+      onClick={() => {
+        // Guarda el estado en sessionStorage para no perderlo tras el redirect
+        sessionStorage.setItem(
+          'form_borrador',
+          JSON.stringify({
+            form,
+            filasTalla,
+            seleccionadas,
+          })
+        );
+        window.location.href = `${import.meta.env.VITE_API_URL}/oauth2/authorization/google`;
+      }}
+      className="mt-3 w-full rounded-md bg-blue-950 px-4 py-2 font-semibold text-white hover:bg-blue-900"
+    >
+      Volver a iniciar sesión
+    </button>
+  </div>
+)}
+
         <button
-          type="submit"
-          disabled={cargando || cargandoCategorias}
-          className="w-full rounded-md bg-yellow-400 px-4 py-2 font-semibold text-blue-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {cargando ? 'Subiendo...' : 'Guardar producto'}
-        </button>
+  type="submit"
+  disabled={cargando || comprimiendo || cargandoCategorias}
+  className="w-full rounded-md bg-yellow-400 px-4 py-2 font-semibold text-blue-950 disabled:opacity-60"
+>
+  {comprimiendo
+    ? "Optimizando fotos..."
+    : cargando
+    ? `Subiendo... ${progreso}%`
+    : "Guardar producto"}
+</button>
       </form>
     </div>
   );
