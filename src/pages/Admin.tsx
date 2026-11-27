@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import SubirProducto from "../components/SubirProducto";
 import SubirCategoria from "../components/SubirCategoria";
-import CuadernoVentas from "../components/CuadernoVentas";
+import EditarProductos from "../components/EditarProductos";
 import PedidosAdmin from "../components/pedidosAdmin";
 import EliminarAgotados from "../components/EliminarAgotados";
 import ProcesarIA from "../components/ProcesarIA";
@@ -27,7 +27,7 @@ const SECCIONES: { id: Seccion; titulo: string; componente: ReactNode }[] = [
   { id: "categoria", titulo: "Categorías",         componente: <SubirCategoria /> },
   { id: "vender", titulo: "Vender", componente: <Vender /> },
   { id: "ventas", titulo: "Ventas mensuales", componente: <Ventas /> },
-  { id: "cuaderno",  titulo: "Productos y stock",  componente: <CuadernoVentas /> },
+  { id: "cuaderno",  titulo: "Editar Productos",  componente: <EditarProductos /> },
   { id: "pedidos",   titulo: "Pedidos pendientes", componente: <PedidosAdmin /> },
   { id: "agotados",  titulo: "Eliminar agotados",  componente: <EliminarAgotados /> },
   { id: "ia",        titulo: "Procesar con IA",    componente: <ProcesarIA /> },

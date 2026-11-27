@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Header from "../components/Header";
-import ProductCard from "../components/ProductCard";
+import MostrarProductos from "../components/MostrarProductos";
 import {
   listarCategoriasConImagen,
   type CategoriaConImagen,
@@ -14,15 +14,43 @@ const CategoriaPage = () => {
   const [categoria, setCategoria] = useState<CategoriaConImagen | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelado = false;
     setCargando(true);
-    listarCategoriasConImagen().then(async (cats) => {
-      const cat = cats.find((c) => String(c.id) === id) ?? null;
-      setCategoria(cat);
-      if (cat) setProductos(await productoService.obtenerTodos(cat.nombre));
-      setCargando(false);
-    });
+    setError(null);
+    setProductos([]);
+    setCategoria(null);
+
+    (async () => {
+      try {
+        const cats = await listarCategoriasConImagen();
+        if (cancelado) return;
+
+        const cat = cats.find((c) => String(c.id) === id) ?? null;
+        setCategoria(cat);
+
+        if (cat) {
+          const data = await productoService.obtenerTodos({
+            categoria: cat.nombre,
+          });
+          if (cancelado) return;
+          setProductos(data);
+        }
+      } catch (e) {
+        if (cancelado) return;
+        setError(
+          e instanceof Error ? e.message : "No se pudieron cargar los productos."
+        );
+      } finally {
+        if (!cancelado) setCargando(false);
+      }
+    })();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id]);
 
   return (
@@ -36,56 +64,17 @@ const CategoriaPage = () => {
           {categoria?.nombre ?? "Categoría"}
         </h1>
 
-        {cargando && (
-          <>
-            {/* Skeletons en forma de carrusel (móvil) */}
-            <div className="-mx-4 flex gap-4 overflow-hidden px-4 sm:hidden">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="h-80 w-[80%] shrink-0 animate-pulse rounded-lg bg-gray-200"
-                />
-              ))}
-            </div>
-            {/* Skeletons en grid (desktop) */}
-            <div className="hidden grid-cols-2 gap-6 sm:grid lg:grid-cols-4">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="h-80 animate-pulse rounded-lg bg-gray-200" />
-              ))}
-            </div>
-          </>
+        {!cargando && !error && !categoria && (
+          <p className="text-gray-500">Esta categoría no existe.</p>
         )}
 
-        {!cargando && productos.length === 0 && (
-          <p className="text-gray-500">No hay productos en esta categoría.</p>
-        )}
-
-        {!cargando && productos.length > 0 && (
-          <>
-            {/* Hint de swipe en móvil */}
-            <span className="mb-2 block text-xs text-gray-500 sm:hidden">
-              Desliza →
-            </span>
-
-            <div
-              className="
-                -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2
-                scroll-pl-4 scroll-pr-4
-                scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden
-                sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:gap-6 sm:overflow-visible sm:px-0 sm:pb-0
-                lg:grid-cols-4
-              "
-            >
-              {productos.map((p, i) => (
-                <div
-                  key={p.id}
-                  className="w-[80%] shrink-0 snap-start sm:w-auto sm:shrink"
-                >
-                  <ProductCard producto={p} priority={i < 2} />
-                </div>
-              ))}
-            </div>
-          </>
+        {(cargando || categoria) && (
+          <MostrarProductos
+            productos={productos}
+            cargando={cargando}
+            error={error}
+            className="px-0 py-0 pb-0"
+          />
         )}
       </main>
     </div>

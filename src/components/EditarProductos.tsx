@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { productoService } from "../services/productoService";
+import { listarCategorias, type Categoria } from "../services/categoriaService";
 import type { Producto } from "../types/Producto";
 
 const formato = new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" });
@@ -16,7 +17,7 @@ const crearFila = (talla = "", cantidad = ""): FilaTalla => ({
   cantidad,
 });
 
-const CuadernoVentas = () => {
+const EditarProductos = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState(true);
   const [seleccionado, setSeleccionado] = useState<Producto | null>(null);
@@ -30,6 +31,12 @@ const CuadernoVentas = () => {
   const [precio, setPrecio] = useState("");
   const [busqueda, setBusqueda] = useState("");
 
+  // Categorías
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
+  const [menuCatAbierto, setMenuCatAbierto] = useState(false);
+  const catRef = useRef<HTMLDivElement>(null);
+
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,6 +44,21 @@ const CuadernoVentas = () => {
       .obtenerTodos()
       .then(setProductos)
       .finally(() => setCargando(false));
+
+    listarCategorias()
+      .then(setCategorias)
+      .catch(() => setCategorias([]));
+  }, []);
+
+  // Cerrar dropdown de categorías al hacer clic fuera
+  useEffect(() => {
+    const onClickFuera = (e: MouseEvent) => {
+      if (!catRef.current?.contains(e.target as Node)) {
+        setMenuCatAbierto(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickFuera);
+    return () => document.removeEventListener("mousedown", onClickFuera);
   }, []);
 
   const cargarEnEditor = (p: Producto) => {
@@ -45,6 +67,8 @@ const CuadernoVentas = () => {
     setDescripcion(p.descripcion);
     setPrecio(String(p.precio));
     setFilas(Object.entries(p.tallas).map(([t, q]) => crearFila(t, String(q))));
+    setSeleccionadas(p.categorias.map((c) => c.id));
+    setMenuCatAbierto(false);
     setMensaje(null);
     setError(null);
   };
@@ -55,7 +79,6 @@ const CuadernoVentas = () => {
       const p = await productoService.obtenerPorId(id);
       if (p) {
         cargarEnEditor(p);
-        // En celular, bajar hasta el editor
         if (window.innerWidth < 768) {
           setTimeout(
             () => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
@@ -91,12 +114,23 @@ const CuadernoVentas = () => {
 
   const quitarFila = (id: string) => setFilas((prev) => prev.filter((f) => f.id !== id));
 
+  const toggleCategoria = (id: number) => {
+    setSeleccionadas((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const nombresSeleccionados = categorias
+    .filter((c) => seleccionadas.includes(c.id))
+    .map((c) => c.nombre);
+
   const guardar = async () => {
     if (!seleccionado) return;
     setError(null);
     setMensaje(null);
 
     if (!nombre.trim()) return setError("El nombre no puede estar vacío.");
+    if (seleccionadas.length === 0) return setError("Debe seleccionar al menos una categoría.");
 
     const tallas: Record<string, number> = {};
     for (const f of filas) {
@@ -120,6 +154,7 @@ const CuadernoVentas = () => {
         descripcion: descripcion.trim(),
         precio: precioNum,
         tallas,
+        categoriaIds: seleccionadas,
       });
       setProductos((prev) => prev.map((p) => (p.id === actualizado.id ? actualizado : p)));
       cargarEnEditor(actualizado);
@@ -143,7 +178,6 @@ const CuadernoVentas = () => {
     <div className="grid gap-4 md:grid-cols-[1fr_1fr] md:gap-6 lg:grid-cols-[1fr_1.2fr]">
       {/* Columna izquierda: buscador + lista */}
       <div className="flex flex-col gap-3">
-        {/* Buscador (filtra la lista en vivo) */}
         <div className="relative w-full">
           <input
             type="text"
@@ -163,7 +197,7 @@ const CuadernoVentas = () => {
             </button>
           ) : (
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <i className="fa-solid fa-magnifying-glass" />
+              🔍
             </span>
           )}
         </div>
@@ -225,7 +259,7 @@ const CuadernoVentas = () => {
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               maxLength={200}
-              className="border border-gray-400 px-3 py-2 text-sm"
+              className="border border-gray-400 px-3 py-2 text-sm uppercase"
             />
 
             <label className="text-xs font-medium uppercase text-gray-600">Descripción</label>
@@ -246,6 +280,47 @@ const CuadernoVentas = () => {
               onChange={(e) => setPrecio(e.target.value)}
               className="border border-gray-400 px-3 py-2 text-sm"
             />
+
+            {/* Categorías */}
+            <label className="text-xs font-medium uppercase text-gray-600">Categorías</label>
+            <div ref={catRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuCatAbierto((v) => !v)}
+                aria-expanded={menuCatAbierto}
+                className="flex w-full items-center justify-between border border-gray-400 px-3 py-2 text-left text-sm hover:bg-gray-50"
+              >
+                <span className={nombresSeleccionados.length ? "text-gray-900" : "text-gray-400"}>
+                  {nombresSeleccionados.length
+                    ? nombresSeleccionados.join(", ")
+                    : "Selecciona una o más categorías"}
+                </span>
+                <span className="ml-2 text-gray-500">{menuCatAbierto ? "▲" : "▼"}</span>
+              </button>
+
+              {menuCatAbierto && (
+                <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 space-y-1 overflow-y-auto rounded-md border border-gray-200 bg-white p-2 shadow-lg">
+                  {categorias.length === 0 && (
+                    <li className="px-2 py-1 text-sm text-gray-500">
+                      No hay categorías creadas todavía.
+                    </li>
+                  )}
+                  {categorias.map((cat) => (
+                    <li key={cat.id}>
+                      <label className="flex cursor-pointer items-center gap-3 rounded px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={seleccionadas.includes(cat.id)}
+                          onChange={() => toggleCategoria(cat.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-950 focus:ring-blue-500"
+                        />
+                        {cat.nombre}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             <p className="text-xs font-medium uppercase text-gray-600">Tallas y cantidades</p>
             <div className="flex flex-col gap-2">
@@ -320,4 +395,4 @@ const CuadernoVentas = () => {
   );
 };
 
-export default CuadernoVentas;
+export default EditarProductos;
