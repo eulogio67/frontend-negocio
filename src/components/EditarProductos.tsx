@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { productoService } from "../services/productoService";
 import { listarCategorias, type Categoria } from "../services/categoriaService";
 import type { Producto } from "../types/Producto";
@@ -17,6 +17,8 @@ const crearFila = (talla = "", cantidad = ""): FilaTalla => ({
   cantidad,
 });
 
+type FiltroCat = "todos" | "sin-categoria" | number;
+
 const EditarProductos = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -31,17 +33,20 @@ const EditarProductos = () => {
   const [precio, setPrecio] = useState("");
   const [busqueda, setBusqueda] = useState("");
 
+  // Filtro por categoría
+  const [filtroCat, setFiltroCat] = useState<FiltroCat>("todos");
+
   // Categorías
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
   const [menuCatAbierto, setMenuCatAbierto] = useState(false);
   const catRef = useRef<HTMLDivElement>(null);
-
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // ✅ Carga TODOS los productos (no solo 24) y sin caché
     productoService
-      .obtenerTodos()
+      .obtenerTodos({ size: 1000, forzar: true })
       .then(setProductos)
       .finally(() => setCargando(false));
 
@@ -50,7 +55,6 @@ const EditarProductos = () => {
       .catch(() => setCategorias([]));
   }, []);
 
-  // Cerrar dropdown de categorías al hacer clic fuera
   useEffect(() => {
     const onClickFuera = (e: MouseEvent) => {
       if (!catRef.current?.contains(e.target as Node)) {
@@ -60,6 +64,24 @@ const EditarProductos = () => {
     document.addEventListener("mousedown", onClickFuera);
     return () => document.removeEventListener("mousedown", onClickFuera);
   }, []);
+
+  // Contador de productos por categoría (para el filtro)
+  const conteoPorCategoria = useMemo(() => {
+    const map = new Map<number, number>();
+    let sinCat = 0;
+    for (const p of productos) {
+      if (!p.categorias || p.categorias.length === 0) {
+        sinCat++;
+      } else {
+        // Un producto cuenta una sola vez por categoría (aunque venga repetido)
+        const idsUnicos = new Set(p.categorias.map((c) => c.id));
+        for (const id of idsUnicos) {
+          map.set(id, (map.get(id) ?? 0) + 1);
+        }
+      }
+    }
+    return { porId: map, sinCat };
+  }, [productos]);
 
   const cargarEnEditor = (p: Producto) => {
     setSeleccionado(p);
@@ -158,7 +180,7 @@ const EditarProductos = () => {
       });
       setProductos((prev) => prev.map((p) => (p.id === actualizado.id ? actualizado : p)));
       cargarEnEditor(actualizado);
-      setMensaje("Producto guardado.");
+      setMensaje("Producto guardado. Categorías actualizadas.");
     } catch {
       setError("No se pudo guardar el producto.");
     } finally {
@@ -168,22 +190,58 @@ const EditarProductos = () => {
 
   if (cargando) return <p className="text-gray-500">Cargando productos...</p>;
 
+  // ───── Filtrado combinado: búsqueda + categoría ─────
   const filtrados = productos.filter((p) => {
     const t = busqueda.trim().toLowerCase();
-    if (!t) return true;
-    return p.nombre.toLowerCase().includes(t);
+    const matchTexto = !t || p.nombre.toLowerCase().includes(t);
+
+    let matchCat = true;
+    if (filtroCat === "sin-categoria") {
+      matchCat = !p.categorias || p.categorias.length === 0;
+    } else if (typeof filtroCat === "number") {
+      matchCat = p.categorias?.some((c) => c.id === filtroCat) ?? false;
+    }
+
+    return matchTexto && matchCat;
   });
 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_1fr] md:gap-6 lg:grid-cols-[1fr_1.2fr]">
-      {/* Columna izquierda: buscador + lista */}
+      {/* Columna izquierda: filtros + buscador + lista */}
       <div className="flex flex-col gap-3">
+        {/* Filtro por categoría */}
+        <div>
+          <label className="mb-1 block text-xs font-medium uppercase text-gray-600">
+            Filtrar por categoría
+          </label>
+          <select
+            value={filtroCat === "todos" ? "todos" : filtroCat === "sin-categoria" ? "sin-categoria" : String(filtroCat)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "todos" || v === "sin-categoria") setFiltroCat(v);
+              else setFiltroCat(Number(v));
+            }}
+            className="w-full border border-gray-400 bg-white px-3 py-2 text-sm outline-none focus:border-blue-600"
+          >
+            <option value="todos">Todos ({productos.length})</option>
+            <option value="sin-categoria">
+              ⚠️ Sin categoría ({conteoPorCategoria.sinCat})
+            </option>
+            {categorias.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre} ({conteoPorCategoria.porId.get(c.id) ?? 0})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Buscador */}
         <div className="relative w-full">
           <input
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar producto..."
+            placeholder="Buscar producto por nombre..."
             className="w-full border border-gray-400 bg-white px-3 py-2 pr-10 text-sm outline-none focus:border-blue-600"
           />
           {busqueda ? (
@@ -202,35 +260,59 @@ const EditarProductos = () => {
           )}
         </div>
 
+        {/* Contador */}
+        <p className="text-xs text-gray-500">
+          Mostrando <strong>{filtrados.length}</strong> de {productos.length} productos
+        </p>
+
+        {/* Lista */}
         <ul className="flex max-h-[50vh] flex-col gap-3 overflow-y-auto pr-1 md:max-h-[70vh]">
-          {filtrados.map((p) => (
-            <li key={p.id}>
-              <button
-                type="button"
-                onClick={() => abrir(p.id)}
-                className={`flex w-full items-center gap-3 border bg-white p-3 text-left hover:bg-gray-50 sm:gap-4 ${
-                  seleccionado?.id === p.id ? "border-blue-950" : "border-gray-300"
-                }`}
-              >
-                <img
-                  src={p.imageUrl}
-                  alt={p.nombre}
-                  className="h-14 w-14 shrink-0 object-cover sm:h-16 sm:w-16"
-                />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate font-semibold text-gray-900">{p.nombre}</span>
-                  <span className="text-sm text-gray-500">{formato.format(p.precio)}</span>
-                </div>
-                <span className="shrink-0 text-xs text-gray-500">Stock: {p.stock}</span>
-              </button>
-            </li>
-          ))}
+          {filtrados.map((p) => {
+            const sinCats = !p.categorias || p.categorias.length === 0;
+            return (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  onClick={() => abrir(p.id)}
+                  className={`flex w-full items-center gap-3 border bg-white p-3 text-left hover:bg-gray-50 sm:gap-4 ${
+                    seleccionado?.id === p.id
+                      ? "border-blue-950"
+                      : sinCats
+                      ? "border-red-300 bg-red-50"
+                      : "border-gray-300"
+                  }`}
+                >
+                  <img
+                    src={p.imageUrl}
+                    alt={p.nombre}
+                    className="h-14 w-14 shrink-0 object-cover sm:h-16 sm:w-16"
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-semibold text-gray-900">{p.nombre}</span>
+                    <span className="text-sm text-gray-500">{formato.format(p.precio)}</span>
+                    {sinCats ? (
+                      <span className="mt-0.5 text-xs font-medium text-red-600">
+                        ⚠️ Sin categoría
+                      </span>
+                    ) : (
+                      <span className="mt-0.5 truncate text-xs text-gray-500">
+                        {p.categorias.map((c) => c.nombre).join(", ")}
+                      </span>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-xs text-gray-500">Stock: {p.stock}</span>
+                </button>
+              </li>
+            );
+          })}
 
           {filtrados.length === 0 && (
             <p className="text-sm text-gray-500">
               {busqueda
                 ? `No hay productos que coincidan con "${busqueda.trim()}".`
-                : "No hay productos."}
+                : filtroCat === "sin-categoria"
+                ? "✓ Todos los productos tienen al menos una categoría."
+                : "No hay productos en esta categoría."}
             </p>
           )}
         </ul>
@@ -253,6 +335,12 @@ const EditarProductos = () => {
               alt={seleccionado.nombre}
               className="h-40 w-32 object-cover"
             />
+
+            {seleccionadas.length === 0 && (
+              <div className="rounded-md border border-yellow-300 bg-yellow-50 p-2 text-xs text-yellow-900">
+                ⚠️ Este producto no tiene categorías. Selecciona al menos una antes de guardar.
+              </div>
+            )}
 
             <label className="text-xs font-medium uppercase text-gray-600">Nombre</label>
             <input

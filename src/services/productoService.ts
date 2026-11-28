@@ -26,7 +26,7 @@ export const productoService = {
     const {
       categoria,
       page = 0,
-      size = 24,
+      size = 200,
       forzar = false,
     } = opciones;
 
